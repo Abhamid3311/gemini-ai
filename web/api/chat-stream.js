@@ -1,6 +1,4 @@
-export const config = { runtime: 'edge' }
-
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { getGenerativeModel } from './_gemini'
 
 const SYSTEM_PROMPT = "You are a concise, helpful AI. Use Markdown formatting with headings, lists, and bold where useful. Understand and respond in the user's language automatically (Bangla, Banglish, English). Keep answers clear; use bullet points for steps/lists; include short code blocks when appropriate."
 
@@ -26,38 +24,35 @@ function sanitizeAndBuild(messages){
 	return { history, userParts }
 }
 
-export default async function handler(req) {
+export default async function handler(req, res) {
+	if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 	try {
-		const body = await req.json()
-		const { messages, model = 'gemini-2.5-flash' } = body || {}
-		if(!Array.isArray(messages)) return new Response('messages must be an array', { status: 400 })
-		const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-		if(!apiKey) return new Response('Missing GOOGLE_GEMINI_API_KEY', { status: 500 })
-		const genai = new GoogleGenerativeAI(apiKey)
+		const { messages, model = 'gemini-2.5-flash' } = req.body || {}
+		if(!Array.isArray(messages)) return res.status(400).json({ error: 'messages must be an array' })
 		const { history, userParts } = sanitizeAndBuild(messages)
-		const genModel = genai.getGenerativeModel({ model, systemInstruction: SYSTEM_PROMPT })
+
+		res.setHeader('Content-Type', 'text/event-stream')
+		res.setHeader('Cache-Control', 'no-cache')
+		res.setHeader('Connection', 'keep-alive')
+
+		const genModel = getGenerativeModel(model, SYSTEM_PROMPT)
 		const chat = genModel.startChat({ history })
 		const result = await chat.sendMessageStream(userParts)
 
-		const stream = new ReadableStream({
-			async start(controller){
-				try{
-					for await (const chunk of result.stream) {
-						const text = chunk.text()
-						if (text) controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(text)}\n\n`))
-					}
-					controller.enqueue(new TextEncoder().encode(`event: done\n`))
-					controller.close()
-				}catch(err){
-					controller.enqueue(new TextEncoder().encode(`event: error\n`))
-					controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(err?.message||'error')}\n\n`))
-					controller.close()
-				}
-			}
-		})
-
-		return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } })
-	}catch(err){
-		return new Response('Internal Error', { status: 500 })
+		for await (const chunk of result.stream) {
+			const text = chunk.text()
+			if (text) res.write(`data: ${JSON.stringify(text)}\n\n`)
+		}
+		const final = await result.response
+		res.write(`event: done\n`)
+		res.write(`data: ${JSON.stringify(final.text())}\n\n`)
+		res.end()
+	} catch (err) {
+		if (!res.headersSent) {
+			res.setHeader('Content-Type', 'text/event-stream')
+		}
+		res.write(`event: error\n`)
+		res.write(`data: ${JSON.stringify(err?.message||'Internal Error')}\n\n`)
+		res.end()
 	}
 }
