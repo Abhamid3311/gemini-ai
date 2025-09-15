@@ -67,12 +67,8 @@ export default function App() {
 				setLoading(false)
 				return
 			}
-			if (!res.ok) {
-				const errText = ct.includes('application/json') ? JSON.stringify(await res.json()) : await res.text()
-				throw new Error(errText || `HTTP ${res.status}`)
-			}
 
-			// Fallback to non-streaming JSON
+			// Fallback to non-streaming JSON if streaming not available or failed
 			const res2 = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
