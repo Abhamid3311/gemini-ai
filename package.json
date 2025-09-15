@@ -1,0 +1,32 @@
+{
+  "name": "gemini-ai",
+  "version": "1.0.0",
+  "description": "Minimal Node.js integration with Google Gemini Generative AI",
+  "type": "module",
+  "main": "src/text.js",
+  "scripts": {
+    "text": "node src/text.js",
+    "chat": "node src/chat.js",
+    "dev:api": "nodemon",
+    "start:api": "node src/server/index.js"
+  },
+  "keywords": [
+    "gemini",
+    "google",
+    "generative-ai",
+    "node",
+    "sdk"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
