@@ -38,12 +38,13 @@ export default function App() {
 		updateActiveMessages(next)
 		setLoading(true)
 		try {
-			const res = await fetch('/api/chat/stream', {
+			const res = await fetch('/api/chat-stream', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
 				body: JSON.stringify({ messages: next, model }),
 			})
-			if (res.ok && res.headers.get('content-type')?.includes('text/event-stream')) {
+			const ct = res.headers.get('content-type') || ''
+			if (res.ok && ct.includes('text/event-stream')) {
 				const reader = res.body.getReader()
 				const decoder = new TextDecoder()
 				let assistant = ''
@@ -66,11 +67,22 @@ export default function App() {
 				setLoading(false)
 				return
 			}
+			if (!res.ok) {
+				const errText = ct.includes('application/json') ? JSON.stringify(await res.json()) : await res.text()
+				throw new Error(errText || `HTTP ${res.status}`)
+			}
+
+			// Fallback to non-streaming JSON
 			const res2 = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ messages: next, model }),
 			})
+			const ct2 = res2.headers.get('content-type') || ''
+			if (!ct2.includes('application/json')) {
+				const text = await res2.text()
+				throw new Error(text || `HTTP ${res2.status}`)
+			}
 			const data = await res2.json()
 			if (!res2.ok) throw new Error(data?.error || 'Request failed')
 			updateActiveMessages([...next, { role: 'assistant', content: data.reply }])
@@ -119,7 +131,7 @@ export default function App() {
 				<header className="fixed md:left-64 left-0 right-0 top-0 z-40 border-b px-4 py-3 bg-background/80 backdrop-blur flex items-center justify-between gap-3">
 					<div className="flex items-center gap-2">
 						<button className="md:hidden rounded-md border px-2 py-1 text-sm" onClick={()=>setSidebarOpen((v)=>!v)}>☰</button>
-						<h1 className="text-base font-semibold">Numid Chat</h1>
+						<h1 className="text-base font-semibold">Hamid Chat</h1>
 					</div>
 					<div className="flex items-center gap-2">
 						<div className="hidden sm:flex items-center gap-2 rounded-md border p-1 text-xs">
