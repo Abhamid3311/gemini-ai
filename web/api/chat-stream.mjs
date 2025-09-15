@@ -1,4 +1,4 @@
-import { getGenerativeModel } from './_gemini'
+import { getGenerativeModel } from './_gemini.mjs'
 
 const SYSTEM_PROMPT = "You are a concise, helpful AI. Use Markdown formatting with headings, lists, and bold where useful. Understand and respond in the user's language automatically (Bangla, Banglish, English). Keep answers clear; use bullet points for steps/lists; include short code blocks when appropriate."
 

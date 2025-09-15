@@ -1,4 +1,4 @@
-import { getGenerativeModel } from './_gemini'
+import { getGenerativeModel } from './_gemini.mjs'
 
 const SYSTEM_PROMPT = "You are a concise, helpful AI."
 
